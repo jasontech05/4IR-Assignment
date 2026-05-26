@@ -1,9 +1,5 @@
 # Kubernetes Guestbook with Prometheus & Grafana
 
-Extends the [Pulumi Kubernetes Guestbook example](https://github.com/pulumi/examples/blob/master/kubernetes-ts-guestbook/README.md) with Prometheus and Grafana monitoring, deployed via Pulumi using Helm charts.
-
----
-
 ## Deploy
 
 **Prerequisites:** [Pulumi CLI](https://www.pulumi.com/docs/install/), Node.js ≥ 18, a running Kubernetes cluster with `kubectl` configured.
@@ -11,63 +7,41 @@ Extends the [Pulumi Kubernetes Guestbook example](https://github.com/pulumi/exam
 ```bash
 cd simple
 npm install
-
-# First time only — use an empty passphrase when prompted
-PULUMI_CONFIG_PASSPHRASE="" pulumi stack init dev
-PULUMI_CONFIG_PASSPHRASE="" pulumi config set isMinikube false
-
-PULUMI_CONFIG_PASSPHRASE="" pulumi up
+./deploy.sh
 ```
 
-Deployment takes ~60–90 seconds. Stack outputs are printed on completion:
-
-```
-frontendIp          : "172.18.0.x"
-grafanaAdminPassword: [secret]
-grafanaAdminUsername: "admin"
-grafanaUrl          : "http://172.18.0.x:3000"
-guestbookUrl        : "http://172.18.0.x"
-```
-
-To reveal the admin password:
-
-```bash
-PULUMI_CONFIG_PASSPHRASE="" pulumi stack output grafanaAdminPassword --show-secrets
-```
+`deploy.sh` auto-generates a secure passphrase and Grafana admin password on first run, deploys the full stack, and keeps port-forwards running. Press **Ctrl+C** to stop.
 
 ---
 
-## Access Grafana
-
-The LoadBalancer IPs are on the internal Docker bridge network. Use port-forward to reach them from your browser:
-
-```bash
-kubectl port-forward --address 0.0.0.0 svc/frontend 8080:80 -n default &
-kubectl port-forward --address 0.0.0.0 svc/grafana 3000:3000 -n monitoring &
-```
+## Grafana
 
 | | |
 |---|---|
-| Guestbook | `http://localhost:8080` |
-| Grafana | `http://localhost:3000` |
+| URL | `http://localhost:3000` |
 | Username | `admin` |
-| Password | `Fun2day!` |
+| Password | printed to terminal by `deploy.sh` |
 
-Grafana opens on the **Guestbook – Kubernetes Pods** dashboard showing CPU, memory, network I/O, and container restart counts for all pods.
+To retrieve the password at any time:
+
+```bash
+export PULUMI_CONFIG_PASSPHRASE="$(cat .pulumi-passphrase)"
+pulumi stack output grafanaAdminPassword --show-secrets
+```
+
+The **Guestbook – Kubernetes Pods** dashboard loads automatically on login. Use the **Namespace** and **Pod** dropdowns at the top to filter by namespace or individual pod.
+
+| Panel | What it shows |
+|---|---|
+| CPU Usage (cores) | Per-pod CPU consumption over time |
+| Memory Usage (bytes) | Per-pod working set memory |
+| Network RX (bytes/s) | Inbound network traffic per pod |
+| Network TX (bytes/s) | Outbound network traffic per pod |
+| Container Restarts | Restart count per container over the last hour |
 
 ---
 
-## Verify Prometheus Is Scraping Guestbook Metrics
-
-**1. Check pod annotations**
-
-```bash
-kubectl get pods -n default -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.annotations.prometheus\.io/scrape}{"\n"}{end}'
-```
-
-Every pod should print `true`.
-
-**2. Query Prometheus**
+## Verify Prometheus Is Scraping
 
 ```bash
 kubectl port-forward svc/prometheus-server 9090:80 -n monitoring &
@@ -76,16 +50,15 @@ curl -s 'http://localhost:9090/api/v1/query?query=container_cpu_usage_seconds_to
   | python3 -c "import sys,json; r=json.load(sys.stdin)['data']['result']; print(len(r), 'series found')"
 ```
 
-A non-zero result confirms the guestbook pods are being scraped.
-
-**3. Check Prometheus Targets UI**
-
-Open `http://localhost:9090/targets` and find the **kubernetes-pods** job — all guestbook pods should show status **UP**.
+A non-zero result confirms the guestbook pods are being scraped. Open `http://localhost:9090/targets` to see the **kubernetes-pods** job status.
 
 ---
 
 ## Tear Down
 
 ```bash
-PULUMI_CONFIG_PASSPHRASE="" pulumi destroy --yes
+./teardown.sh
 ```
+
+Stops port-forwards, destroys all Kubernetes resources, and removes the Pulumi stack.
+

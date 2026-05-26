@@ -2,7 +2,8 @@
 
 ## Deploy
 
-**Prerequisites:** [Pulumi CLI](https://www.pulumi.com/docs/install/), Node.js ≥ 18, a running Kubernetes cluster with `kubectl` configured.
+**Prerequisites:** Pulumi CLI, Node.js ≥ 18, a running Kubernetes cluster with `kubectl` configured. 
+**Script Tested on:** Tested on Windows 11, WSL2 Ubuntu 22.04, Node V18.20.8, Docker Desktop 4.75.0
 
 ```bash
 cd simple
@@ -10,7 +11,7 @@ npm install
 ./deploy.sh
 ```
 
-`deploy.sh` auto-generates a secure passphrase and Grafana admin password on first run, deploys the full stack, and keeps port-forwards running. Press **Ctrl+C** to stop.
+`deploy.sh` auto-generates a secure passphrase and Grafana admin password on first run, deploys the full stack, then starts and keeps port-forwards running. Press **Ctrl+C** to stop.
 
 ---
 
